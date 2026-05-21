@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import StudyLogForm from "@/components/StudyLogForm";
+import StudySummary from "@/components/StudySummary";
+import SkillStatus from "@/components/SkillStatus";
+import StudyLogList from "@/components/StudyLogList";
 
 export default function Home() {
   type StudyCategory =
@@ -284,39 +287,12 @@ export default function Home() {
           日々の学習内容と学習時間を記録して、スキルの成長を可視化するアプリです。
         </p>
 
-        <section className="mb-6 rounded-lg bg-slate-900 p-4">
-          <h2 className="mb-4 text-xl font-bold">学習サマリー</h2>
-
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div className="rounded-md bg-slate-800 p-4">
-              <p className="text-sm text-slate-400">今日</p>
-              <p className="text-2xl font-bold text-purple-300">
-                {todayMinutes}分
-              </p>
-            </div>
-
-            <div className="rounded-md bg-slate-800 p-4">
-              <p className="text-sm text-slate-400">今週</p>
-              <p className="text-2xl font-bold text-purple-300">
-                {weekMinutes}分
-              </p>
-            </div>
-
-            <div className="rounded-md bg-slate-800 p-4">
-              <p className="text-sm text-slate-400">今月</p>
-              <p className="text-2xl font-bold text-purple-300">
-                {monthMinutes}分
-              </p>
-            </div>
-
-            <div className="rounded-md bg-slate-800 p-4">
-              <p className="text-sm text-slate-400">合計</p>
-              <p className="text-2xl font-bold text-purple-300">
-                {totalMinutes}分
-              </p>
-            </div>
-          </div>
-        </section>
+        <StudySummary
+          todayMinutes={todayMinutes}
+          weekMinutes={weekMinutes}
+          monthMinutes={monthMinutes}
+          totalMinutes={totalMinutes}
+        />
 
         <StudyLogForm
           title={title}
@@ -332,143 +308,31 @@ export default function Home() {
           handleAddStudyLog={handleAddStudyLog}
         />
 
-        <section className="mb-6 rounded-lg bg-slate-900 p-4">
-          <h2 className="mb-4 text-xl font-bold">スキル別ステータス</h2>
+        <SkillStatus
+          skillCategories={skillCategories}
+          categoryLabels={categoryLabels}
+          getCategoryMinutes={getCategoryMinutes}
+        />
 
-          <div className="space-y-3">
-            {skillCategories.map((skillCategory) => {
-              const skillMinutes = getCategoryMinutes(skillCategory);
-
-              return (
-                <div key={skillCategory}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span>{categoryLabels[skillCategory]}</span>
-                    <span>{skillMinutes}分</span>
-                  </div>
-
-                  <div className="h-3 rounded-full bg-slate-700">
-                    <div
-                      className="h-3 rounded-full bg-purple-500"
-                      style={{ width: `${Math.min(skillMinutes, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-lg bg-slate-900 p-4">
-          <h2 className="mb-4 text-xl font-bold">学習ログ一覧</h2>
-
-          {studyLogs.length === 0 ? (
-            <p className="text-slate-400">まだ学習ログがありません。</p>
-          ) : (
-            <ul className="space-y-2">
-              {studyLogs.map((log) => (
-                <li key={log.id} className="rounded-md bg-slate-800 p-3">
-                  {editingLogId === log.id ? (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
-                      />
-
-                      <select
-                        value={editingCategory}
-                        onChange={(e) =>
-                          setEditingCategory(e.target.value as StudyCategory)
-                        }
-                        className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
-                      >
-                        <option value="htmlCss">HTML / CSS</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="react">React</option>
-                        <option value="nextjs">Next.js</option>
-                        <option value="sql">SQL</option>
-                        <option value="git">Git / GitHub</option>
-                        <option value="excel">Excel</option>
-                        <option value="other">その他</option>
-                      </select>
-
-                      <input
-                        type="number"
-                        value={editingMinutes}
-                        onChange={(e) => setEditingMinutes(e.target.value)}
-                        className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
-                      />
-
-                      <input
-                        type="date"
-                        value={editingStudyDate}
-                        onChange={(e) => setEditingStudyDate(e.target.value)}
-                        className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
-                      />
-
-                      <textarea
-                        value={editingMemo}
-                        onChange={(e) => setEditingMemo(e.target.value)}
-                        className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
-                      />
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveEdit}
-                          className="rounded-md bg-blue-600 px-3 py-1 text-sm font-bold hover:bg-blue-700"
-                        >
-                          保存
-                        </button>
-
-                        <button
-                          onClick={handleCancelEdit}
-                          className="rounded-md bg-slate-600 px-3 py-1 text-sm font-bold hover:bg-slate-500"
-                        >
-                          キャンセル
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-bold">{log.title}</div>
-
-                        <div className="mt-1 text-sm text-slate-300">
-                          カテゴリ：{categoryLabels[log.category]} / 学習時間：
-                          {log.minutes}分 / 学習日：{log.studyDate}
-                        </div>
-
-                        {log.memo && (
-                          <p className="mt-1 text-sm text-slate-400">
-                            メモ：{log.memo}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleStartEdit(log)}
-                          className="rounded-md bg-blue-600 px-3 py-1 text-sm font-bold hover:bg-blue-700"
-                        >
-                          編集
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteStudyLog(log.id)}
-                          className="rounded-md bg-red-600 px-3 py-1 text-sm font-bold hover:bg-red-700"
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <StudyLogList
+          studyLogs={studyLogs}
+          editingLogId={editingLogId}
+          editingTitle={editingTitle}
+          editingCategory={editingCategory}
+          editingMinutes={editingMinutes}
+          editingStudyDate={editingStudyDate}
+          editingMemo={editingMemo}
+          categoryLabels={categoryLabels}
+          setEditingTitle={setEditingTitle}
+          setEditingCategory={setEditingCategory}
+          setEditingMinutes={setEditingMinutes}
+          setEditingStudyDate={setEditingStudyDate}
+          setEditingMemo={setEditingMemo}
+          handleStartEdit={handleStartEdit}
+          handleSaveEdit={handleSaveEdit}
+          handleCancelEdit={handleCancelEdit}
+          handleDeleteStudyLog={handleDeleteStudyLog}
+        />
       </div>
     </main>
   );
