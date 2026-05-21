@@ -16,7 +16,7 @@ export default function Home() {
     | "other";
 
   type StudyLog = {
-    id: string;
+    id: number;
     title: string;
     category: StudyCategory;
     minutes: number;
@@ -43,7 +43,7 @@ export default function Home() {
   const [studyDate, setStudyDate] = useState("");
   const [memo, setMemo] = useState("");
   const [studyLogs, setStudyLogs] = useState<StudyLog[]>([]);
-  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editingLogId, setEditingLogId] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingCategory, setEditingCategory] =
     useState<StudyCategory>("react");
@@ -104,13 +104,13 @@ export default function Home() {
     console.log("Supabaseに追加した学習ログ:", data);
 
     const newStudyLog: StudyLog = {
-      id: crypto.randomUUID(),
-      title: title,
-      category: category,
-      minutes: Number(minutes),
-      studyDate: studyDate,
-      memo: memo,
-      createdAt: new Date().toISOString(),
+      id: data.id,
+      title: data.title,
+      category: data.category as StudyCategory,
+      minutes: data.minutes,
+      studyDate: data.study_date,
+      memo: data.memo ?? "",
+      createdAt: data.created_at,
     };
 
     setStudyLogs([...studyLogs, newStudyLog]);
@@ -122,7 +122,7 @@ export default function Home() {
     setMemo("");
   };
 
-  const handleDeleteStudyLog = async (id: string) => {
+  const handleDeleteStudyLog = async (id: number) => {
     const { error } = await supabase.from("study_logs").delete().eq("id", id);
 
     if (error) {
