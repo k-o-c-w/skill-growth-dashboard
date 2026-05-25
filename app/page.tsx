@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import StudyLogForm from "@/components/StudyLogForm";
 import StudySummary from "@/components/StudySummary";
@@ -54,6 +55,90 @@ export default function Home() {
   const [editingMinutes, setEditingMinutes] = useState("");
   const [editingStudyDate, setEditingStudyDate] = useState("");
   const [editingMemo, setEditingMemo] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("ログイン情報の取得に失敗しました", error);
+        return;
+      }
+
+      setUser(data.user);
+    };
+
+    checkUser();
+  }, []);
+
+  const handleSignUp = async () => {
+    if (authEmail.trim() === "" || authPassword.trim() === "") {
+      setAuthMessage("メールアドレスとパスワードを入力してください");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: authEmail,
+      password: authPassword,
+    });
+
+    if (error) {
+      setAuthMessage("新規登録に失敗しました");
+      console.error("新規登録に失敗しました", error);
+      return;
+    }
+
+    if (data.session) {
+      setUser(data.user);
+      setAuthMessage("新規登録してログインしました");
+    } else {
+      setAuthMessage(
+        "確認メールを送信しました。メール内のリンクを確認してください",
+      );
+    }
+  };
+
+  const handleLogin = async () => {
+    if (authEmail.trim() === "" || authPassword.trim() === "") {
+      setAuthMessage("メールアドレスとパスワードを入力してください");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password: authPassword,
+    });
+
+    if (error) {
+      setAuthMessage("ログインに失敗しました");
+      console.error("ログインに失敗しました", error);
+      return;
+    }
+
+    setUser(data.user);
+    setAuthMessage("ログインしました");
+    setAuthPassword("");
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setAuthMessage("ログアウトに失敗しました");
+      console.error("ログアウトに失敗しました", error);
+      return;
+    }
+
+    setUser(null);
+    setStudyLogs([]);
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthMessage("ログアウトしました");
+  };
 
   useEffect(() => {
     const fetchStudyLogs = async () => {
@@ -81,9 +166,13 @@ export default function Home() {
     };
 
     fetchStudyLogs();
-  }, []);
+  }, [user]);
 
   const handleAddStudyLog = async () => {
+    if (!user) {
+      setAuthMessage("ログインしてください");
+      return;
+    }
     if (title.trim() === "" || minutes.trim() === "" || studyDate === "") {
       return;
     }
@@ -96,6 +185,7 @@ export default function Home() {
         minutes: Number(minutes),
         study_date: studyDate,
         memo: memo,
+        user_id: user.id,
       })
       .select()
       .single();
@@ -287,52 +377,117 @@ export default function Home() {
           日々の学習内容と学習時間を記録して、スキルの成長を可視化するアプリです。
         </p>
 
-        <StudySummary
-          todayMinutes={todayMinutes}
-          weekMinutes={weekMinutes}
-          monthMinutes={monthMinutes}
-          totalMinutes={totalMinutes}
-        />
+        <section className="mb-6 rounded-lg bg-slate-900 p-4">
+          <h2 className="mb-4 text-xl font-bold">アカウント</h2>
 
-        <StudyLogForm
-          title={title}
-          category={category}
-          minutes={minutes}
-          studyDate={studyDate}
-          memo={memo}
-          setTitle={setTitle}
-          setCategory={setCategory}
-          setMinutes={setMinutes}
-          setStudyDate={setStudyDate}
-          setMemo={setMemo}
-          handleAddStudyLog={handleAddStudyLog}
-        />
+          {user ? (
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-slate-300">ログイン中：{user.email}</p>
 
-        <SkillStatus
-          skillCategories={skillCategories}
-          categoryLabels={categoryLabels}
-          getCategoryMinutes={getCategoryMinutes}
-        />
+              <button
+                onClick={handleLogout}
+                className="rounded-md bg-slate-600 px-4 py-2 font-bold hover:bg-slate-500"
+              >
+                ログアウト
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="メールアドレス"
+                className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
+              />
 
-        <StudyLogList
-          studyLogs={studyLogs}
-          editingLogId={editingLogId}
-          editingTitle={editingTitle}
-          editingCategory={editingCategory}
-          editingMinutes={editingMinutes}
-          editingStudyDate={editingStudyDate}
-          editingMemo={editingMemo}
-          categoryLabels={categoryLabels}
-          setEditingTitle={setEditingTitle}
-          setEditingCategory={setEditingCategory}
-          setEditingMinutes={setEditingMinutes}
-          setEditingStudyDate={setEditingStudyDate}
-          setEditingMemo={setEditingMemo}
-          handleStartEdit={handleStartEdit}
-          handleSaveEdit={handleSaveEdit}
-          handleCancelEdit={handleCancelEdit}
-          handleDeleteStudyLog={handleDeleteStudyLog}
-        />
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="パスワード"
+                className="w-full rounded-md bg-white px-3 py-2 text-slate-900"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleLogin}
+                  className="flex-1 rounded-md bg-purple-600 px-4 py-2 font-bold hover:bg-purple-700"
+                >
+                  ログイン
+                </button>
+
+                <button
+                  onClick={handleSignUp}
+                  className="flex-1 rounded-md bg-blue-600 px-4 py-2 font-bold hover:bg-blue-700"
+                >
+                  新規登録
+                </button>
+              </div>
+            </div>
+          )}
+
+          {authMessage && (
+            <p className="mt-3 text-sm text-purple-300">{authMessage}</p>
+          )}
+        </section>
+
+        {user ? (
+          <>
+            <StudySummary
+              todayMinutes={todayMinutes}
+              weekMinutes={weekMinutes}
+              monthMinutes={monthMinutes}
+              totalMinutes={totalMinutes}
+            />
+
+            <StudyLogForm
+              title={title}
+              category={category}
+              minutes={minutes}
+              studyDate={studyDate}
+              memo={memo}
+              setTitle={setTitle}
+              setCategory={setCategory}
+              setMinutes={setMinutes}
+              setStudyDate={setStudyDate}
+              setMemo={setMemo}
+              handleAddStudyLog={handleAddStudyLog}
+            />
+
+            <SkillStatus
+              skillCategories={skillCategories}
+              categoryLabels={categoryLabels}
+              getCategoryMinutes={getCategoryMinutes}
+            />
+
+            <StudyLogList
+              studyLogs={studyLogs}
+              editingLogId={editingLogId}
+              editingTitle={editingTitle}
+              editingCategory={editingCategory}
+              editingMinutes={editingMinutes}
+              editingStudyDate={editingStudyDate}
+              editingMemo={editingMemo}
+              categoryLabels={categoryLabels}
+              setEditingTitle={setEditingTitle}
+              setEditingCategory={setEditingCategory}
+              setEditingMinutes={setEditingMinutes}
+              setEditingStudyDate={setEditingStudyDate}
+              setEditingMemo={setEditingMemo}
+              handleStartEdit={handleStartEdit}
+              handleSaveEdit={handleSaveEdit}
+              handleCancelEdit={handleCancelEdit}
+              handleDeleteStudyLog={handleDeleteStudyLog}
+            />
+          </>
+        ) : (
+          <section className="rounded-lg bg-slate-900 p-4">
+            <p className="text-slate-300">
+              学習ログを記録するには、ログインまたは新規登録してください。
+            </p>
+          </section>
+        )}
       </div>
     </main>
   );
